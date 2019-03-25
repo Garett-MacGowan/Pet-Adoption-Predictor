@@ -2,6 +2,8 @@ import kaggle
 import tensorflow as tf
 import numpy as np
 import pandas
+import csv
+import json
 
 from sklearn.preprocessing import normalize
 from tensorflow.python.keras import layers
@@ -9,7 +11,7 @@ from tensorflow.python.keras import layers
 def main(dataDirectory):
   # Preprocessed training data
   data = prepData(dataDirectory, True)
-  print(data[:, 4:311])
+  print(data)
 
 '''
 prepData() should return numpy array with input shape
@@ -21,9 +23,13 @@ than another.
 '''
 def prepData(dataDirectory, trainBoolean):
   data = readCoreData(dataDirectory, trainBoolean)
-  # We will ultimately have 689 attributes for each sample,
+  if (trainBoolean):
+    dataDirPrefix = 'train_'
+  else:
+    dataDirPrefix = 'test_'
+  # We will ultimately have 677 attributes for each sample,
   # each with a value between 0 and 1.
-  processedData = np.zeros((data.shape[0], 689))
+  processedData = np.zeros((data.shape[0], 677))
   # Iterate over the columns of the data, keeping track of where we are
   for index, col in enumerate(data.transpose()):
     
@@ -131,7 +137,177 @@ def prepData(dataDirectory, trainBoolean):
         newAttribs[ind][sample] = 1
       processedData[:, 637:645] = newAttribs
 
-  
+    '''
+    Looking at MaturitySize attribute.
+    This can take on 5 values. (0 indexed)
+    '''
+    if (index == 9):
+      newAttribs = np.zeros(processedData.shape[0], 5)
+      for ind, sample in enumerate(col):
+        newAttribs[ind][sample] = 1
+      processedData[:, 645:650] = newAttribs
+
+    '''
+    Looking at FurLength attribute.
+    This can take on 4 values. (0 indexed)
+    '''
+    if (index == 10):
+      newAttribs = np.zeros(processedData.shape[0], 4)
+      for ind, sample in enumerate(col):
+        newAttribs[ind][sample] = 1
+      processedData[:, 650:654] = newAttribs
+    
+    '''
+    Looking at vaccinated attribute.
+    This can take on 3 values. (1 indexed)
+    '''
+    if (index == 11):
+      newAttribs = np.zeros(processedData.shape[0], 3)
+      for ind, sample in enumerate(col):
+        newAttribs[ind][sample-1] = 1
+      processedData[:, 654:657] = newAttribs
+
+    '''
+    Looking at Dewormed attribute.
+    This can take on 3 values. (1 indexed)
+    '''
+    if (index == 12):
+      newAttribs = np.zeros(processedData.shape[0], 3)
+      for ind, sample in enumerate(col):
+        newAttribs[ind][sample-1] = 1
+      processedData[:, 654:657] = newAttribs
+
+    '''
+    Looking at Sterilized attribute.
+    This can take on 3 values. (1 indexed)
+    '''
+    if (index == 13):
+      newAttribs = np.zeros(processedData.shape[0], 3)
+      for ind, sample in enumerate(col):
+        newAttribs[ind][sample-1] = 1
+      processedData[:, 657:660] = newAttribs
+
+    '''
+    Looking at Health attribute.
+    This can take on 4 values. (0 indexed)
+    '''
+    if (index == 14):
+      newAttribs = np.zeros(processedData.shape[0], 4)
+      for ind, sample in enumerate(col):
+        newAttribs[ind][sample] = 1
+      processedData[:, 660:654] = newAttribs
+    
+    '''
+    Looking at Quantity attribute.
+    Max normalized as represented by a 0-1 float range
+    '''
+    if (index == 15):
+      newAttribs = normalize(col.reshape(-1, 1), norm='max', axis=0)
+      newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
+      # Save new attributes to processedData
+      processedData[:, 654] = newAttribs
+
+    '''
+    Looking at Fee attribute.
+    Normalize by 2000, I don't think a fee will ever exceed this value.
+    '''
+    if (index == 16):
+      normF = lambda x: x/2000
+      newAttribs = np.array(list(map(normF, col)))
+      processedData[:, 655] = newAttribs
+
+    '''
+    Looking at State attribute.
+    Cannot use state id as index because it is not 0 or 1 based.
+    '''
+    if (index == 17):
+      # Create map from state_labels to 0 based indices
+      mapping = {}
+      reader = csv.reader(open('./breeder_labels.csv', 'r'))
+      # First index is label
+      for ind, row in reader:
+        if (ind == 0):
+          continue
+        k, _ = row
+        mapping[k] = ind - 1 
+      # There should be mapping length new attributes
+      newAttribs = np.zeros(processedData.shape[0], 15)
+      for ind, sample in enumerate(col):
+        # Activate the attribute corresponding to the state for this sample
+        newAttribs[ind][mapping[sample]] = 1
+      processedData[:, 656:671]
+
+    '''
+    Looking at VideoAmt attribute.
+    Normalized by 10, likely no more than 10 videos per pet
+    '''
+    if (index == 18):
+      normF = lambda x: x/10
+      newAttribs = np.array(list(map(normF, col)))
+      processedData[:, 671] = newAttribs
+    
+    '''
+    Looking at Description attribute.
+    Max normalized as represented by a 0-1 range float
+    '''
+    if (index == 19):
+      # Calculate length of each description
+      lengthF = lambda x: len(str(x))
+      newAttribs = np.array(list(map(lengthF, col)))
+      newAttribs = normalize(newAttribs.reshape(-1, 1), norm='max', axis=0)
+      newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
+      processedData[:, 672] = newAttribs
+
+    '''
+    Looking at PetID attribute.
+    Use it to generate color and sentiment attributes
+    '''
+    if (index == 20):
+      # Generate color attributes (3 different colors between 0-1)
+      newAttribs = np.zeros(processedData.shape[0], 3)
+      for ind, sample in enumerate(col):
+        # Find associated metadata color with highest score
+        r, g, b = 0
+        with open('./data' + dataDirPrefix + 'metadata' + sample + '.json') as json_file:
+          metadata = json.load(json_file)
+          currentHighestScore = 0
+          for item in metadata['imagePropertiesAnnotation']['dominantColors']['colors']:
+            if (item['score'] > currentHighestScore):
+              r = item['color']['red']
+              g = item['color']['green']
+              b = item['color']['blue']
+              currentHighestScore = item['score']
+        r /= 255
+        g /= 255
+        b /= 255
+        newAttribs[ind] = [r, g, b]
+      processedData[:, 673:676] = newAttribs
+
+      # Generate sentiment attribute (1 attribute)
+      newAttribs = np.zeros(processedData.shape[0], 1)
+      for ind, sample in enumerate(col):
+        # Find associated average sentiment
+        sentimentVal = 0
+        sentimentDivisor
+        with open('./data' + dataDirPrefix + 'sentiment' + sample + '.json') as json_file:
+          sentiment = json.load(json_file)
+          for item in sentiment['sentences']['sentences']:
+            sentimentVal += item['magnitude'] * item['score']
+          sentimentDivisor = len(sentiment['sentences'])
+        sentimentVal /= sentimentDivisor
+        newAttribs[ind] = sentimentVal
+      processedData[:, 676] = newAttribs
+
+    '''
+    Looking at PhotoAmt attribute.
+    I think most important aspect of this attribute is photo absence, so
+    Max normalization on any distribution with non-zero elements should do.
+    '''
+    if (index == 21):
+      newAttribs = normalize(col.reshape(-1, 1), norm='max', axis=0)
+      newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
+      # Save new attributes to processedData
+      processedData[:, 677] = newAttribs
 
   return processedData
 
