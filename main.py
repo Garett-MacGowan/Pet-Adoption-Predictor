@@ -1,16 +1,23 @@
-import kaggle
+#import kaggle
 import tensorflow as tf
 import numpy as np
 import pandas
 import csv
 import json
+import glob
 
 from sklearn.preprocessing import normalize
 from tensorflow.python.keras import layers
 
-def main(dataDirectory):
-  # Preprocessed training data
-  data = prepData(dataDirectory, True)
+def main(dataDirectory, processedDataDirectory):
+  try:
+    data = loadProcessedData(processedDataDirectory)
+  except:
+    # Process training data
+    data = prepData(dataDirectory, True)
+    # Save the processed training data so it can be read instead of re-calculated
+    saveProcessedData(data, processedDataDirectory)
+    
   print(data)
 
 '''
@@ -29,10 +36,10 @@ def prepData(dataDirectory, trainBoolean):
     dataDirPrefix = 'test_'
   # We will ultimately have 677 attributes for each sample,
   # each with a value between 0 and 1.
-  processedData = np.zeros((data.shape[0], 677))
+  processedData = np.zeros((data.shape[0], 687))
   # Iterate over the columns of the data, keeping track of where we are
   for index, col in enumerate(data.transpose()):
-    
+    print(index/data.transpose().shape[0])
     '''
     Looking at type attribute (dog or cat).
     Transform it into two boolean attributes.
@@ -122,7 +129,7 @@ def prepData(dataDirectory, trainBoolean):
     for non-entry.
     '''
     if (index == 7):
-      newAttribs = np.zeros(processedData.shape[0], 8)
+      newAttribs = np.zeros((processedData.shape[0], 8))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample] = 1
       processedData[:, 629:637] = newAttribs
@@ -132,7 +139,7 @@ def prepData(dataDirectory, trainBoolean):
     Same logic as Color 2
     '''
     if (index == 8):
-      newAttribs = np.zeros(processedData.shape[0], 8)
+      newAttribs = np.zeros((processedData.shape[0], 8))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample] = 1
       processedData[:, 637:645] = newAttribs
@@ -142,7 +149,7 @@ def prepData(dataDirectory, trainBoolean):
     This can take on 5 values. (0 indexed)
     '''
     if (index == 9):
-      newAttribs = np.zeros(processedData.shape[0], 5)
+      newAttribs = np.zeros((processedData.shape[0], 5))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample] = 1
       processedData[:, 645:650] = newAttribs
@@ -152,7 +159,7 @@ def prepData(dataDirectory, trainBoolean):
     This can take on 4 values. (0 indexed)
     '''
     if (index == 10):
-      newAttribs = np.zeros(processedData.shape[0], 4)
+      newAttribs = np.zeros((processedData.shape[0], 4))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample] = 1
       processedData[:, 650:654] = newAttribs
@@ -162,7 +169,7 @@ def prepData(dataDirectory, trainBoolean):
     This can take on 3 values. (1 indexed)
     '''
     if (index == 11):
-      newAttribs = np.zeros(processedData.shape[0], 3)
+      newAttribs = np.zeros((processedData.shape[0], 3))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample-1] = 1
       processedData[:, 654:657] = newAttribs
@@ -172,7 +179,7 @@ def prepData(dataDirectory, trainBoolean):
     This can take on 3 values. (1 indexed)
     '''
     if (index == 12):
-      newAttribs = np.zeros(processedData.shape[0], 3)
+      newAttribs = np.zeros((processedData.shape[0], 3))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample-1] = 1
       processedData[:, 654:657] = newAttribs
@@ -182,7 +189,7 @@ def prepData(dataDirectory, trainBoolean):
     This can take on 3 values. (1 indexed)
     '''
     if (index == 13):
-      newAttribs = np.zeros(processedData.shape[0], 3)
+      newAttribs = np.zeros((processedData.shape[0], 3))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample-1] = 1
       processedData[:, 657:660] = newAttribs
@@ -192,10 +199,10 @@ def prepData(dataDirectory, trainBoolean):
     This can take on 4 values. (0 indexed)
     '''
     if (index == 14):
-      newAttribs = np.zeros(processedData.shape[0], 4)
+      newAttribs = np.zeros((processedData.shape[0], 4))
       for ind, sample in enumerate(col):
         newAttribs[ind][sample] = 1
-      processedData[:, 660:654] = newAttribs
+      processedData[:, 660:664] = newAttribs
     
     '''
     Looking at Quantity attribute.
@@ -205,7 +212,7 @@ def prepData(dataDirectory, trainBoolean):
       newAttribs = normalize(col.reshape(-1, 1), norm='max', axis=0)
       newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
       # Save new attributes to processedData
-      processedData[:, 654] = newAttribs
+      processedData[:, 664] = newAttribs
 
     '''
     Looking at Fee attribute.
@@ -214,7 +221,7 @@ def prepData(dataDirectory, trainBoolean):
     if (index == 16):
       normF = lambda x: x/2000
       newAttribs = np.array(list(map(normF, col)))
-      processedData[:, 655] = newAttribs
+      processedData[:, 665] = newAttribs
 
     '''
     Looking at State attribute.
@@ -223,19 +230,19 @@ def prepData(dataDirectory, trainBoolean):
     if (index == 17):
       # Create map from state_labels to 0 based indices
       mapping = {}
-      reader = csv.reader(open('./breeder_labels.csv', 'r'))
+      reader = csv.reader(open('./data/state_labels.csv', 'r'))
       # First index is label
-      for ind, row in reader:
+      for ind, row in enumerate(reader):
         if (ind == 0):
           continue
         k, _ = row
-        mapping[k] = ind - 1 
+        mapping[k] = ind - 1
       # There should be mapping length new attributes
-      newAttribs = np.zeros(processedData.shape[0], 15)
+      newAttribs = np.zeros((processedData.shape[0], 15))
       for ind, sample in enumerate(col):
         # Activate the attribute corresponding to the state for this sample
-        newAttribs[ind][mapping[sample]] = 1
-      processedData[:, 656:671]
+        newAttribs[ind][mapping[str(sample)]] = 1
+      processedData[:, 666:681]
 
     '''
     Looking at VideoAmt attribute.
@@ -244,7 +251,7 @@ def prepData(dataDirectory, trainBoolean):
     if (index == 18):
       normF = lambda x: x/10
       newAttribs = np.array(list(map(normF, col)))
-      processedData[:, 671] = newAttribs
+      processedData[:, 681] = newAttribs
     
     '''
     Looking at Description attribute.
@@ -256,7 +263,7 @@ def prepData(dataDirectory, trainBoolean):
       newAttribs = np.array(list(map(lengthF, col)))
       newAttribs = normalize(newAttribs.reshape(-1, 1), norm='max', axis=0)
       newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
-      processedData[:, 672] = newAttribs
+      processedData[:, 682] = newAttribs
 
     '''
     Looking at PetID attribute.
@@ -264,39 +271,45 @@ def prepData(dataDirectory, trainBoolean):
     '''
     if (index == 20):
       # Generate color attributes (3 different colors between 0-1)
-      newAttribs = np.zeros(processedData.shape[0], 3)
+      newAttribs = np.zeros((processedData.shape[0], 3))
       for ind, sample in enumerate(col):
+        print(ind/col.shape[0])
         # Find associated metadata color with highest score
-        r, g, b = 0
-        with open('./data' + dataDirPrefix + 'metadata' + sample + '.json') as json_file:
-          metadata = json.load(json_file)
-          currentHighestScore = 0
-          for item in metadata['imagePropertiesAnnotation']['dominantColors']['colors']:
-            if (item['score'] > currentHighestScore):
-              r = item['color']['red']
-              g = item['color']['green']
-              b = item['color']['blue']
-              currentHighestScore = item['score']
-        r /= 255
-        g /= 255
-        b /= 255
+        r = 0
+        g = 0
+        b = 0
+        globObj = glob.glob('./data/' + dataDirPrefix + 'metadata/' + sample + '-*.json')
+        for filename in globObj:
+          with open(filename, encoding='utf8') as json_file:
+            metadata = json.load(json_file)
+            currentHighestScore = 0
+            for item in metadata['imagePropertiesAnnotation']['dominantColors']['colors']:
+              if (item['score'] > currentHighestScore):
+                r = item['color']['red']
+                g = item['color']['green']
+                b = item['color']['blue']
+                currentHighestScore = item['score']
+        r /= 255 + len(globObj)
+        g /= 255 + len(globObj)
+        b /= 255 + len(globObj)
         newAttribs[ind] = [r, g, b]
-      processedData[:, 673:676] = newAttribs
+      processedData[:, 683:686] = newAttribs
 
       # Generate sentiment attribute (1 attribute)
-      newAttribs = np.zeros(processedData.shape[0], 1)
+      newAttribs = np.zeros((processedData.shape[0], 1))
       for ind, sample in enumerate(col):
+        print(ind/col.shape[0])
         # Find associated average sentiment
         sentimentVal = 0
-        sentimentDivisor
-        with open('./data' + dataDirPrefix + 'sentiment' + sample + '.json') as json_file:
+        sentimentDivisor = 0
+        with open('./data/' + dataDirPrefix + 'sentiment/' + sample + '.json', encoding='utf8') as json_file:
           sentiment = json.load(json_file)
           for item in sentiment['sentences']['sentences']:
             sentimentVal += item['magnitude'] * item['score']
           sentimentDivisor = len(sentiment['sentences'])
         sentimentVal /= sentimentDivisor
         newAttribs[ind] = sentimentVal
-      processedData[:, 676] = newAttribs
+      processedData[:, 686] = newAttribs
 
     '''
     Looking at PhotoAmt attribute.
@@ -307,10 +320,9 @@ def prepData(dataDirectory, trainBoolean):
       newAttribs = normalize(col.reshape(-1, 1), norm='max', axis=0)
       newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
       # Save new attributes to processedData
-      processedData[:, 677] = newAttribs
+      processedData[:, 687] = newAttribs
 
   return processedData
-
 
 def readCoreData(dataDirectory, trainBoolean):
   if (trainBoolean):
@@ -319,6 +331,15 @@ def readCoreData(dataDirectory, trainBoolean):
   else:
     data = pandas.read_csv(dataDirectory + '/test/test.csv').to_numpy()
   data = removeUnusedColumns(data)
+  return data
+
+def saveProcessedData(data, processedDataDirectory):
+  file = open(processedDataDirectory, 'wb')
+  np.save(file, data)
+
+def loadProcessedData(processedDataDirectory):
+  file = open(processedDataDirectory, 'r')
+  data = np.load(file)
   return data
 
 '''
@@ -338,7 +359,6 @@ Function creates the model for predicting adoption speed
 def createModel():
   model = tf.keras.Sequential()
 
-
 '''
 Will only work if new entrants are not prohibited.
 Must have a kaggle account and follow instructions for API token @
@@ -347,12 +367,13 @@ https://github.com/Kaggle/kaggle-api under the API credentials section.
 I found another copy of the data @ https://github.com/qemtek/PetFinder
 which can be downloaded manually.
 '''
-def downloadData(path):
-  kaggle.api.authenticate()
-  kaggle.api.competition_download_files('petfinder-adoption-prediction', path)
+# def downloadData(path):
+#   kaggle.api.authenticate()
+#   kaggle.api.competition_download_files('petfinder-adoption-prediction', path)
 
 '''
 Parameters:
 dataDirectory
+processedDataDirectory
 '''
-main('./data')
+main('./data', './processedData/data.npy')
