@@ -285,13 +285,13 @@ def prepData(dataDirectory, trainBoolean):
             currentHighestScore = 0
             for item in metadata['imagePropertiesAnnotation']['dominantColors']['colors']:
               if (item['score'] > currentHighestScore):
-                r = item['color']['red']
-                g = item['color']['green']
-                b = item['color']['blue']
+                r += item['color']['red'] 
+                g += item['color']['green']
+                b += item['color']['blue']
                 currentHighestScore = item['score']
-        r /= 255 + len(globObj)
-        g /= 255 + len(globObj)
-        b /= 255 + len(globObj)
+        r /= (255 + len(globObj))
+        g /= (255 + len(globObj))
+        b /= (255 + len(globObj))
         newAttribs[ind] = [r, g, b]
       processedData[:, 683:686] = newAttribs
 
