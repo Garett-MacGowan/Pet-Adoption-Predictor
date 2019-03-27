@@ -9,16 +9,15 @@ import glob
 from sklearn.preprocessing import normalize
 from tensorflow.python.keras import layers
 
-def main(dataDirectory, processedDataDirectory):
-  try:
+def main(dataDirectory, processedDataDirectory, loadProcessed):
+  if (loadProcessed):
     data = loadProcessedData(processedDataDirectory)
-  except:
+  else:
     # Process training data
     data = prepData(dataDirectory, True)
     # Save the processed training data so it can be read instead of re-calculated
     saveProcessedData(data, processedDataDirectory)
-    
-  print(data)
+  print(data.shape)
 
 '''
 prepData() should return numpy array with input shape
@@ -34,9 +33,9 @@ def prepData(dataDirectory, trainBoolean):
     dataDirPrefix = 'train_'
   else:
     dataDirPrefix = 'test_'
-  # We will ultimately have 677 attributes for each sample,
+  # We will ultimately have 688 attributes for each sample,
   # each with a value between 0 and 1.
-  processedData = np.zeros((data.shape[0], 687))
+  processedData = np.zeros((data.shape[0], 688))
   # Iterate over the columns of the data, keeping track of where we are
   for index, col in enumerate(data.transpose()):
     print(index/data.transpose().shape[0])
@@ -278,6 +277,7 @@ def prepData(dataDirectory, trainBoolean):
         r = 0
         g = 0
         b = 0
+        divisorModifier = 0
         globObj = glob.glob('./data/' + dataDirPrefix + 'metadata/' + sample + '-*.json')
         for filename in globObj:
           with open(filename, encoding='utf8') as json_file:
@@ -285,13 +285,16 @@ def prepData(dataDirectory, trainBoolean):
             currentHighestScore = 0
             for item in metadata['imagePropertiesAnnotation']['dominantColors']['colors']:
               if (item['score'] > currentHighestScore):
-                r += item['color']['red'] 
-                g += item['color']['green']
-                b += item['color']['blue']
-                currentHighestScore = item['score']
-        r /= (255 + len(globObj))
-        g /= (255 + len(globObj))
-        b /= (255 + len(globObj))
+                # Curiously, sometimes the color field is empty
+                if (len(item['color']) >= 1):
+                  r += item['color']['red'] 
+                  g += item['color']['green']
+                  b += item['color']['blue']
+                  currentHighestScore = item['score']
+                  divisorModifier += 1
+        r /= (255 + divisorModifier)
+        g /= (255 + divisorModifier)
+        b /= (255 + divisorModifier)
         newAttribs[ind] = [r, g, b]
       processedData[:, 683:686] = newAttribs
 
@@ -299,16 +302,20 @@ def prepData(dataDirectory, trainBoolean):
       newAttribs = np.zeros((processedData.shape[0], 1))
       for ind, sample in enumerate(col):
         print(ind/col.shape[0])
-        # Find associated average sentiment
-        sentimentVal = 0
-        sentimentDivisor = 0
-        with open('./data/' + dataDirPrefix + 'sentiment/' + sample + '.json', encoding='utf8') as json_file:
-          sentiment = json.load(json_file)
-          for item in sentiment['sentences']['sentences']:
-            sentimentVal += item['magnitude'] * item['score']
-          sentimentDivisor = len(sentiment['sentences'])
-        sentimentVal /= sentimentDivisor
-        newAttribs[ind] = sentimentVal
+        globObj = glob.glob('./data/' + dataDirPrefix + 'sentiment/' + sample + '.json')
+        # Should only be one in this case
+        for filename in globObj:
+          # Find associated average sentiment
+          sentimentVal = 0
+          sentimentDivisor = 0
+          with open(filename, encoding='utf8') as json_file:
+            sentiment = json.load(json_file)
+            for item in sentiment['sentences']:
+              sentimentVal += item['sentiment']['magnitude'] * item['sentiment']['score']
+            sentimentDivisor = len(sentiment['sentences'])
+          sentimentVal /= sentimentDivisor
+          newAttribs[ind] = sentimentVal
+      newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
       processedData[:, 686] = newAttribs
 
     '''
@@ -334,12 +341,10 @@ def readCoreData(dataDirectory, trainBoolean):
   return data
 
 def saveProcessedData(data, processedDataDirectory):
-  file = open(processedDataDirectory, 'wb')
-  np.save(file, data)
+  np.save(processedDataDirectory, data)
 
 def loadProcessedData(processedDataDirectory):
-  file = open(processedDataDirectory, 'r')
-  data = np.load(file)
+  data = np.load(processedDataDirectory + '.npy')
   return data
 
 '''
@@ -375,5 +380,8 @@ which can be downloaded manually.
 Parameters:
 dataDirectory
 processedDataDirectory
+loadProcessed
+  A boolean value of whether or not the data has already been pre-processed.
+  Set to false to reprocess data.
 '''
-main('./data', './processedData/data.npy')
+main('./data', './processedData/data', True)
