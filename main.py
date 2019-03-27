@@ -9,15 +9,39 @@ import glob
 from sklearn.preprocessing import normalize
 from tensorflow.python.keras import layers
 
-def main(dataDirectory, processedDataDirectory, loadProcessed):
-  if (loadProcessed):
-    data = loadProcessedData(processedDataDirectory)
+def main(dataDirectory, preProcessed, retrain):
+  if (preProcessed):
+    trainingData, testingData = loadProcessedData()
   else:
     # Process training data
-    data = prepData(dataDirectory, True)
-    # Save the processed training data so it can be read instead of re-calculated
-    saveProcessedData(data, processedDataDirectory)
-  print(data.shape)
+    trainingData = prepData(dataDirectory, True)
+    # Process testing data
+    testingData = prepData(dataDirectory, False)
+    # Save the processed data
+    saveProcessedData(trainingData, testingData)
+  #if (loadProcessedTesting):
+  if (retrain):
+    # Get training labels
+    trainingLabels = readCoreData(dataDirectory, True)[:,-1]
+    # Create new model
+    model = createModel(trainingData.shape[1])
+    # Train the model
+    model.fit(x=trainingData, y=trainingLabels, epochs=50)
+    # TODO save the model
+  else:
+    # Load model
+    model = loadModel()
+  # Test the model
+  # Getting testing labels
+  testingLabels = readCoreData(dataDirectory, False)[:,-1]
+  # Evaluate model
+  testLoss, testAccuracy = model.evaluate(testingData, testingLabels)
+  print('Test accuracy: ', testAccuracy)
+  print('Test loss: ', testLoss)
+  predictions = model.predict(testingData)
+  predictions = np.argmax(predictions, axis=1)
+  # for index, item in enumerate(testingLabels):
+  #   print("Label: " + str(item) + " Prediction: " + str(predictions[index]))
 
 '''
 prepData() should return numpy array with input shape
@@ -340,12 +364,14 @@ def readCoreData(dataDirectory, trainBoolean):
   data = removeUnusedColumns(data)
   return data
 
-def saveProcessedData(data, processedDataDirectory):
-  np.save(processedDataDirectory, data)
+def saveProcessedData(trainData, testData):
+  np.save('./processedData/trainData', trainData)
+  np.save('./processedData/testData', testData)
 
-def loadProcessedData(processedDataDirectory):
-  data = np.load(processedDataDirectory + '.npy')
-  return data
+def loadProcessedData():
+  trainData = np.load('./processedData/trainData.npy')
+  testData = np.load('./processedData/testData.npy')
+  return trainData, testData
 
 '''
 removeUnusedColumns() should remove colums from the data which
@@ -361,8 +387,21 @@ def removeUnusedColumns(data):
 '''
 Function creates the model for predicting adoption speed
 '''
-def createModel():
+def createModel(inputAttributeCount):
   model = tf.keras.Sequential()
+  # Hidden layer
+  model.add(layers.Dense(inputAttributeCount, activation='relu', input_shape=(inputAttributeCount,)))
+  model.add(layers.Dropout(0.80))
+  # Hidden Layer
+  model.add(layers.Dense(inputAttributeCount, activation='relu'))
+  model.add(layers.Dropout(0.80))
+  # Softmax layer for probability distribution (5 class labels)
+  model.add(layers.Dense(5, activation='softmax'))
+  model.compile(
+    optimizer=tf.train.AdamOptimizer(),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy'])
+  return model
 
 '''
 Will only work if new entrants are not prohibited.
@@ -380,8 +419,10 @@ which can be downloaded manually.
 Parameters:
 dataDirectory
 processedDataDirectory
-loadProcessed
-  A boolean value of whether or not the data has already been pre-processed.
+preProcessed
+  A boolean value of whether or not the training and testing data has already been pre-processed.
   Set to false to reprocess data.
 '''
-main('./data', './processedData/data', True)
+main('./data', True, True)
+
+# TODO consider changing normalization to save normalization quantity for testing.
