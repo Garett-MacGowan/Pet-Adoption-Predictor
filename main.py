@@ -6,6 +6,7 @@ import csv
 import json
 import glob
 
+from sklearn.model_selection._split import train_test_split
 from sklearn.preprocessing import normalize
 from tensorflow.python.keras import layers
 
@@ -23,17 +24,20 @@ def main(dataDirectory, preProcessed, retrain):
   if (retrain):
     # Get training labels
     trainingLabels = readCoreData(dataDirectory, True)[:,-1]
+    # TODO TEMP ********************
+    trainingData, testingData, trainingLabels, testingLabels = train_test_split(trainingData, trainingLabels, test_size=0.1)
+    # TODO TEMP ********************
     # Create new model
     model = createModel(trainingData.shape[1])
     # Train the model
-    model.fit(x=trainingData, y=trainingLabels, epochs=50)
+    model.fit(x=trainingData, y=trainingLabels, epochs=200)
     # TODO save the model
   else:
     # Load model
     model = loadModel()
   # Test the model
   # Getting testing labels
-  testingLabels = readCoreData(dataDirectory, False)[:,-1]
+  #testingLabels = readCoreData(dataDirectory, False)[:,-1]
   # Evaluate model
   testLoss, testAccuracy = model.evaluate(testingData, testingLabels)
   print('Test accuracy: ', testAccuracy)
@@ -390,13 +394,13 @@ Function creates the model for predicting adoption speed
 def createModel(inputAttributeCount):
   model = tf.keras.Sequential()
   # Hidden layer
-  model.add(layers.Dense(inputAttributeCount, activation='relu', input_shape=(inputAttributeCount,)))
-  model.add(layers.Dropout(0.80))
+  model.add(layers.Dense(inputAttributeCount/2, activation='relu', input_shape=(inputAttributeCount,)))
+  model.add(layers.Dropout(0.85))
   # Hidden Layer
-  model.add(layers.Dense(inputAttributeCount, activation='relu'))
-  model.add(layers.Dropout(0.80))
+  model.add(layers.Dense(inputAttributeCount/2, activation='relu'))
+  model.add(layers.Dropout(0.85))
   # Softmax layer for probability distribution (5 class labels)
-  model.add(layers.Dense(5, activation='softmax'))
+  model.add(layers.Dense(5, activation='sigmoid'))
   model.compile(
     optimizer=tf.train.AdamOptimizer(),
     loss='sparse_categorical_crossentropy',
