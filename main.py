@@ -30,7 +30,7 @@ def main(dataDirectory, preProcessed, retrain):
     # Create new model
     model = createModel(trainingData.shape[1])
     # Train the model
-    model.fit(x=trainingData, y=trainingLabels, epochs=200)
+    model.fit(x=trainingData, y=trainingLabels, epochs=75)
     # TODO save the model
   else:
     # Load model
@@ -61,9 +61,9 @@ def prepData(dataDirectory, trainBoolean):
     dataDirPrefix = 'train_'
   else:
     dataDirPrefix = 'test_'
-  # We will ultimately have 688 attributes for each sample,
+  # We will ultimately have 689 attributes for each sample,
   # each with a value between 0 and 1.
-  processedData = np.zeros((data.shape[0], 688))
+  processedData = np.zeros((data.shape[0], 689))
   # Iterate over the columns of the data, keeping track of where we are
   for index, col in enumerate(data.transpose()):
     print(index/data.transpose().shape[0])
@@ -326,25 +326,29 @@ def prepData(dataDirectory, trainBoolean):
         newAttribs[ind] = [r, g, b]
       processedData[:, 683:686] = newAttribs
 
-      # Generate sentiment attribute (1 attribute)
-      newAttribs = np.zeros((processedData.shape[0], 1))
+      # Generate sentiment attributes (2 attributes)
+      newAttribs = np.zeros((processedData.shape[0], 2))
       for ind, sample in enumerate(col):
         print(ind/col.shape[0])
         globObj = glob.glob('./data/' + dataDirPrefix + 'sentiment/' + sample + '.json')
-        # Should only be one in this case
+        # Should only be one file in this case
         for filename in globObj:
-          # Find associated average sentiment
-          sentimentVal = 0
+          # Find associated average sentiment magnitude and score
+          sentimentMagnitude = 0
+          sentimentScore = 0
           sentimentDivisor = 0
           with open(filename, encoding='utf8') as json_file:
             sentiment = json.load(json_file)
             for item in sentiment['sentences']:
-              sentimentVal += item['sentiment']['magnitude'] * item['sentiment']['score']
+              sentimentMagnitude += item['sentiment']['magnitude']
+              sentimentScore += item['sentiment']['score']
             sentimentDivisor = len(sentiment['sentences'])
-          sentimentVal /= sentimentDivisor
-          newAttribs[ind] = sentimentVal
-      newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
-      processedData[:, 686] = newAttribs
+          sentimentMagnitude /= sentimentDivisor
+          sentimentScore /= sentimentDivisor
+          newAttribs[ind][0] = sentimentMagnitude
+          newAttribs[ind][1] = sentimentScore
+      # newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
+      processedData[:, 686:688] = newAttribs
 
     '''
     Looking at PhotoAmt attribute.
@@ -355,7 +359,7 @@ def prepData(dataDirectory, trainBoolean):
       newAttribs = normalize(col.reshape(-1, 1), norm='max', axis=0)
       newAttribs = newAttribs.reshape((1, newAttribs.shape[0]))
       # Save new attributes to processedData
-      processedData[:, 687] = newAttribs
+      processedData[:, 688] = newAttribs
 
   return processedData
 
@@ -392,13 +396,14 @@ def removeUnusedColumns(data):
 Function creates the model for predicting adoption speed
 '''
 def createModel(inputAttributeCount):
+  hiddenLayerSize = int(inputAttributeCount/2)
   model = tf.keras.Sequential()
   # Hidden layer
-  model.add(layers.Dense(inputAttributeCount/2, activation='relu', input_shape=(inputAttributeCount,)))
-  model.add(layers.Dropout(0.85))
+  model.add(layers.Dense(hiddenLayerSize, activation='sigmoid', input_shape=(inputAttributeCount,)))
+  model.add(layers.Dropout(0.40))
   # Hidden Layer
-  model.add(layers.Dense(inputAttributeCount/2, activation='relu'))
-  model.add(layers.Dropout(0.85))
+  model.add(layers.Dense(hiddenLayerSize, activation='sigmoid'))
+  model.add(layers.Dropout(0.40))
   # Softmax layer for probability distribution (5 class labels)
   model.add(layers.Dense(5, activation='sigmoid'))
   model.compile(
@@ -422,10 +427,11 @@ which can be downloaded manually.
 '''
 Parameters:
 dataDirectory
-processedDataDirectory
 preProcessed
   A boolean value of whether or not the training and testing data has already been pre-processed.
   Set to false to reprocess data.
+retrain
+  A boolean value of whether or not to retrain the network
 '''
 main('./data', True, True)
 
