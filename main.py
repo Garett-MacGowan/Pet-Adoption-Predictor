@@ -433,7 +433,7 @@ def createModel(inputAttributeCount):
     metrics=['accuracy'])
   return model
 
-'''
+''' TODO check sigmoid instead of relu
 Function creates the model for predicting adoption speed.
 It uses Keras with Tensorflow as a backend. This is version 1.
 '''
