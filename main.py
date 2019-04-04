@@ -463,8 +463,7 @@ downloadData will only work if new entrants are not prohibited.
 Must have a kaggle account and follow instructions for API token @
 https://github.com/Kaggle/kaggle-api under the API credentials section.
 
-I found another copy of the data @ https://github.com/qemtek/PetFinder
-which can be downloaded manually.
+Data is already downloaded into this repository.
 '''
 # def downloadData(path):
 #   kaggle.api.authenticate()
