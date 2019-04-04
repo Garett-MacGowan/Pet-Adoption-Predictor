@@ -5,7 +5,6 @@ import pandas
 import csv
 import json
 import glob
-import random
 
 from sklearn.model_selection._split import train_test_split
 from sklearn.preprocessing import normalize
@@ -70,6 +69,9 @@ number of derived attributes. Each attribute in m
 should be normalized to the range (0-1) so that no
 attribute is considered significantly more important
 than another.
+
+prepData() was developed in unison by Garett MacGowan and
+Areege Chaudhary (pair programming)
 '''
 def prepData(dataDirectory, trainBoolean):
   data = readCoreData(dataDirectory, trainBoolean)
@@ -410,7 +412,8 @@ def removeUnusedColumns(data):
 
 '''
 Function creates the model for predicting adoption speed.
-It uses Keras with Tensorflow as a backend.
+It uses Keras with Tensorflow as a backend. This is version 2.
+Written by Garett MacGowan
 '''
 def createModel(inputAttributeCount):
   hiddenLayerSize = int(inputAttributeCount/2)
@@ -436,6 +439,7 @@ def createModel(inputAttributeCount):
 ''' TODO check sigmoid instead of relu
 Function creates the model for predicting adoption speed.
 It uses Keras with Tensorflow as a backend. This is version 1.
+Written by Areege Chaudhary
 '''
 # def createModel(inputAttributeCount):
 #   hiddenLayerSize = int(inputAttributeCount/2)
