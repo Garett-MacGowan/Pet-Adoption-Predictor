@@ -14,38 +14,42 @@ def main(dataDirectory, preProcessed, retrain):
   if (preProcessed):
     trainingData, testingData = loadProcessedData()
   else:
-    # Process training data
+    '''
+    Processing training data.
+    This training data is split into a training set and a testing set since the kaggle
+    competition testing data does not have class labels.
+    '''
     trainingData = prepData(dataDirectory, True)
-    # Process testing data
+    '''
+    Process testing data.
+    This testing data is not used currently because it does not contain class labels
+    '''
     testingData = prepData(dataDirectory, False)
-    # Save the processed data
+    # Save the processed data to a file
     saveProcessedData(trainingData, testingData)
-  #if (loadProcessedTesting):
   if (retrain):
     # Get training labels
     trainingLabels = readCoreData(dataDirectory, True)[:,-1]
-    # TODO TEMP ********************
-    trainingData, testingData, trainingLabels, testingLabels = train_test_split(trainingData, trainingLabels, test_size=0.1)
-    # TODO TEMP ********************
+    '''
+    Splitting training data into training data and testing data (10% test data),
+    keeping even distribution of classes in training and testing data
+    '''
+    trainingData, testingData, trainingLabels, testingLabels = train_test_split(trainingData, trainingLabels, test_size=0.2, stratify=trainingLabels)
     # Create new model
     model = createModel(trainingData.shape[1])
     # Train the model
     model.fit(x=trainingData, y=trainingLabels, epochs=75)
     # TODO save the model
   else:
+    # TODO create load model function
     # Load model
     model = loadModel()
-  # Test the model
-  # Getting testing labels
-  #testingLabels = readCoreData(dataDirectory, False)[:,-1]
   # Evaluate model
   testLoss, testAccuracy = model.evaluate(testingData, testingLabels)
   print('Test accuracy: ', testAccuracy)
   print('Test loss: ', testLoss)
   predictions = model.predict(testingData)
   predictions = np.argmax(predictions, axis=1)
-  # for index, item in enumerate(testingLabels):
-  #   print("Label: " + str(item) + " Prediction: " + str(predictions[index]))
 
 '''
 prepData() should return numpy array with input shape
@@ -393,19 +397,23 @@ def removeUnusedColumns(data):
   return np.delete(data, [18], axis=1)
 
 '''
-Function creates the model for predicting adoption speed
+Function creates the model for predicting adoption speed.
+It uses Keras with Tensorflow as a backend.
 '''
 def createModel(inputAttributeCount):
   hiddenLayerSize = int(inputAttributeCount/2)
   model = tf.keras.Sequential()
-  # Hidden layer
+  # Hidden layer with input shape of the size of the input attributes
   model.add(layers.Dense(hiddenLayerSize, activation='sigmoid', input_shape=(inputAttributeCount,)))
+  # Dropout layer to try and prevent over fitting
+  # Works by zeroing out random connections during a training run
   model.add(layers.Dropout(0.40))
   # Hidden Layer
   model.add(layers.Dense(hiddenLayerSize, activation='sigmoid'))
   model.add(layers.Dropout(0.40))
-  # Softmax layer for probability distribution (5 class labels)
+  # Sigmoid final layer with 5 output nodes to represent 5 classes. Winner is highest activation.
   model.add(layers.Dense(5, activation='sigmoid'))
+  # Sparse categorical crossentropy because labels are not one-hot encoded
   model.compile(
     optimizer=tf.train.AdamOptimizer(),
     loss='sparse_categorical_crossentropy',
@@ -413,7 +421,7 @@ def createModel(inputAttributeCount):
   return model
 
 '''
-Will only work if new entrants are not prohibited.
+downloadData will only work if new entrants are not prohibited.
 Must have a kaggle account and follow instructions for API token @
 https://github.com/Kaggle/kaggle-api under the API credentials section.
 
@@ -435,4 +443,8 @@ retrain
 '''
 main('./data', True, True)
 
-# TODO consider changing normalization to save normalization quantity for testing.
+'''
+TODO consider changing normalization strategy to save normalization divisors for deployment.
+Currently, the data is normalized based on training and testing data combined, which is essentially
+cheating. Would need determine good normalization divisors and save them to avoid this.
+'''
