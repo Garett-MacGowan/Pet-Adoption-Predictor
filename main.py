@@ -5,6 +5,7 @@ import pandas
 import csv
 import json
 import glob
+import random
 
 from sklearn.model_selection._split import train_test_split
 from sklearn.preprocessing import normalize
@@ -33,7 +34,7 @@ def main(dataDirectory, preProcessed, retrain):
     trainingLabels = readCoreData(dataDirectory, True)[:,-1]
     '''
     Splitting training data into training data and testing data (10% test data),
-    keeping even distribution of classes in training and testing data
+    keeping equal distribution of classes in training and testing data
     '''
     trainingData, testingData, trainingLabels, testingLabels = train_test_split(trainingData, trainingLabels, test_size=0.1, stratify=trainingLabels)
     # Create new model
@@ -50,10 +51,10 @@ def main(dataDirectory, preProcessed, retrain):
   print('Test accuracy: ', testAccuracy)
   print('Test loss: ', testLoss)
   predictions = model.predict(testingData)
-  # For version 1 (if you want to generate class label)
+  # For version 2 (if you want to generate class label)
   # predictions = np.argmax(predictions, axis=1)
 
-  # For checking performance of version 2
+  # For checking performance of version 1
   # predictions = np.around(predictions)
   # for index, item in enumerate(predictions):
   #   if (item > 4):
@@ -61,6 +62,12 @@ def main(dataDirectory, preProcessed, retrain):
   #   if (item < 0):
   #     predictions[index] = 0
   # print('current accuracy ' + str(accuracy_score(list(testingLabels), list(predictions))))
+
+  # randomPredictions is if you want to test what the accuracy would be with random prediction
+  # randomPredictions = []
+  # for index in range(predictions.shape[0]):
+  #   randomPredictions.append(random.randint(0, 4))
+  # print('random accuracy ' + str(accuracy_score(list(testingLabels), randomPredictions)))
 
 '''
 prepData() should return numpy array with input shape
@@ -436,7 +443,7 @@ def createModel(inputAttributeCount):
     metrics=['accuracy'])
   return model
 
-''' TODO check sigmoid instead of relu
+'''
 Function creates the model for predicting adoption speed.
 It uses Keras with Tensorflow as a backend. This is version 1.
 Written by Areege Chaudhary
@@ -450,7 +457,7 @@ Written by Areege Chaudhary
 #   # Hidden Layer
 #   model.add(layers.Dense(hiddenLayerSize, activation='relu'))
 #   model.add(layers.Dropout(0.4))
-#   # Sigmoid final layer with 1 output node for regression
+#   # Final layer with linear activation a(x) = x, 1 output node for regression
 #   model.add(layers.Dense(1))
 #   model.compile(
 #     optimizer=tf.train.AdamOptimizer(),
