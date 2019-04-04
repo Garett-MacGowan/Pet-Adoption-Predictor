@@ -5,9 +5,11 @@ import pandas
 import csv
 import json
 import glob
+import random
 
 from sklearn.model_selection._split import train_test_split
 from sklearn.preprocessing import normalize
+from sklearn.metrics import accuracy_score
 from tensorflow.python.keras import layers
 
 def main(dataDirectory, preProcessed, retrain):
@@ -34,7 +36,7 @@ def main(dataDirectory, preProcessed, retrain):
     Splitting training data into training data and testing data (10% test data),
     keeping even distribution of classes in training and testing data
     '''
-    trainingData, testingData, trainingLabels, testingLabels = train_test_split(trainingData, trainingLabels, test_size=0.2, stratify=trainingLabels)
+    trainingData, testingData, trainingLabels, testingLabels = train_test_split(trainingData, trainingLabels, test_size=0.1, stratify=trainingLabels)
     # Create new model
     model = createModel(trainingData.shape[1])
     # Train the model
@@ -49,7 +51,17 @@ def main(dataDirectory, preProcessed, retrain):
   print('Test accuracy: ', testAccuracy)
   print('Test loss: ', testLoss)
   predictions = model.predict(testingData)
-  predictions = np.argmax(predictions, axis=1)
+  # For version 1 (if you want to generate class label)
+  # predictions = np.argmax(predictions, axis=1)
+
+  # For checking performance of version 2
+  # predictions = np.around(predictions)
+  # for index, item in enumerate(predictions):
+  #   if (item > 4):
+  #     predictions[index] = 4
+  #   if (item < 0):
+  #     predictions[index] = 0
+  # print('current accuracy ' + str(accuracy_score(list(testingLabels), list(predictions))))
 
 '''
 prepData() should return numpy array with input shape
@@ -411,14 +423,36 @@ def createModel(inputAttributeCount):
   # Hidden Layer
   model.add(layers.Dense(hiddenLayerSize, activation='sigmoid'))
   model.add(layers.Dropout(0.40))
-  # Sigmoid final layer with 5 output nodes to represent 5 classes. Winner is highest activation.
-  model.add(layers.Dense(5, activation='sigmoid'))
+  # Softmax final layer with 5 output nodes to represent 5 classes.
+  # Softmax probabilities add up to 1
+  model.add(layers.Dense(5, activation='softmax'))
   # Sparse categorical crossentropy because labels are not one-hot encoded
   model.compile(
     optimizer=tf.train.AdamOptimizer(),
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy'])
   return model
+
+'''
+Function creates the model for predicting adoption speed.
+It uses Keras with Tensorflow as a backend. This is version 1.
+'''
+# def createModel(inputAttributeCount):
+#   hiddenLayerSize = int(inputAttributeCount/2)
+#   model = tf.keras.Sequential()
+#   # Hidden layer with input shape of the size of the input attributes
+#   model.add(layers.Dense(hiddenLayerSize, activation='relu', input_shape=(inputAttributeCount,)))
+#   model.add(layers.Dropout(0.4))
+#   # Hidden Layer
+#   model.add(layers.Dense(hiddenLayerSize, activation='relu'))
+#   model.add(layers.Dropout(0.4))
+#   # Sigmoid final layer with 1 output node for regression
+#   model.add(layers.Dense(1))
+#   model.compile(
+#     optimizer=tf.train.AdamOptimizer(),
+#     loss='mean_squared_error',
+#     metrics=['accuracy'])
+#   return model
 
 '''
 downloadData will only work if new entrants are not prohibited.
