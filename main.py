@@ -330,7 +330,6 @@ def prepData(dataDirectory, trainBoolean):
         r = 0
         g = 0
         b = 0
-        divisorModifier = 0
         globObj = glob.glob('./data/' + dataDirPrefix + 'metadata/' + sample + '-*.json')
         for filename in globObj:
           with open(filename, encoding='utf8') as json_file:
@@ -340,14 +339,13 @@ def prepData(dataDirectory, trainBoolean):
               if (item['score'] > currentHighestScore):
                 # Curiously, sometimes the color field is empty
                 if (len(item['color']) >= 1):
-                  r += item['color']['red'] 
-                  g += item['color']['green']
-                  b += item['color']['blue']
+                  r = item['color']['red'] 
+                  g = item['color']['green']
+                  b = item['color']['blue']
                   currentHighestScore = item['score']
-                  divisorModifier += 1
-        r /= (255 + divisorModifier)
-        g /= (255 + divisorModifier)
-        b /= (255 + divisorModifier)
+        r /= (255)
+        g /= (255)
+        b /= (255)
         newAttribs[ind] = [r, g, b]
       processedData[:, 683:686] = newAttribs
 
